@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Converter.Common">
+<Abstract>1</Abstract>
+<TimeCreated>64316,72683.195369</TimeCreated>
+
+<Parameter name="SLASH">
+<Expression>$case($system.Version.GetOS(),"Windows":"\",:"/")</Expression>
+</Parameter>
+
+<Method name="execute">
+<Description>
+Execute OS command cmd. 
+timeout - how long to wait for command completion. 
+If debug is true then output debug information.</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>cmd,timeout:%Integer=60,debug:%Boolean=$$$NO</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim sc As %Status = $$$OK
+	set code = ""
+	set out = ""
+	write:debug !, "cmd: ", cmd, !
+	set sc = ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code)
+	if debug {
+		write "status: "
+		if $$$ISERR(sc) {
+			write $System.Status.GetErrorText(sc)
+		} else {
+			write sc
+		}
+		write !,"code: ", code, !, "out: ", out, !
+	}
+	
+	if code'=0 {
+		set sc1 = $$$ERROR($$$GeneralError, "Command: " _ cmd _ $$$NL _ " Error code: " _ code _ $$$NL _ "Output: " _ out)
+		set sc = $$$ADDSC(sc, sc1)	
+	}
+	return sc
+]]></Implementation>
+</Method>
+
+<Method name="tempDir">
+<Description>
+Get name of temporary not-existstig sub-directory inside dir
+w ##class(Converter.Common).tempDir()</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>dir=##class(%SYS.System).TempDirectory()</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	set dir = ##class(%File).NormalizeDirectory(dir)
+	set exists = ##class(%File).DirectoryExists(dir)
+	throw:exists=$$$NO ##class(%Exception.General).%New("<USER>", "mvk.converter.pdf2docx:tempDir", , "Directory " _ dir _ " does not exist")
+	do {
+		set subDir = $random(1000000)
+		set subDirFull = ##class(%File).SubDirectoryName(dir, subDir, $$$YES)
+		set exists = ##class(%File).DirectoryExists(subDirFull)
+	} while exists
+	return subDirFull
+]]></Implementation>
+</Method>
+
+<Method name="getSO">
+<Description>
+Get path to libreoffice/soffice</Description>
+<ClassMethod>1</ClassMethod>
+<Implementation><![CDATA[
+	if $$$isWINDOWS {
+		set path = "soffice"
+	} else {
+		set path = "export HOME=/tmp && unset LD_LIBRARY_PATH && soffice"
+	}
+	return path
+]]></Implementation>
+</Method>
+</Class>
+</Export>
