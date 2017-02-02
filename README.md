@@ -2,6 +2,8 @@
 Convert documents from InterSystems Cache easily using:
 
  - LibreOffice
+ 
+[InterSystems Developer Community article](https://community.intersystems.com/post/converting-documents-using-cach%C3%A9-and-libreoffice).
 
 # Install
 
@@ -29,3 +31,4 @@ Where:
 
 1. Libreoffice errors
    - Instal latest stable Libreoffice (5.2.5 atm). Minimally supported version is 4.2
+   - Don't run more than one process of LibreOffice
