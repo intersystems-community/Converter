@@ -50,7 +50,7 @@ w ##class(Converter.Common).tempDir()</Description>
 <Implementation><![CDATA[
 	set dir = ##class(%File).NormalizeDirectory(dir)
 	set exists = ##class(%File).DirectoryExists(dir)
-	throw:exists=$$$NO ##class(%Exception.General).%New("<USER>", "mvk.converter.pdf2docx:tempDir", , "Directory " _ dir _ " does not exist")
+	throw:exists=$$$NO ##class(%Exception.General).%New("<USER>", "Converter.LibreOffice", , "Directory " _ dir _ " does not exist")
 	do {
 		set subDir = $random(1000000)
 		set subDirFull = ##class(%File).SubDirectoryName(dir, subDir, $$$YES)
