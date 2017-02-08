@@ -73,5 +73,33 @@ Get path to libreoffice/soffice</Description>
 	return path
 ]]></Implementation>
 </Method>
+
+<Method name="getZip">
+<Description>
+Get path to zip</Description>
+<ClassMethod>1</ClassMethod>
+<Implementation><![CDATA[
+	if $$$isWINDOWS {
+		set path = "zip"
+	} else {
+		set path = "zip"
+	}
+	return path
+]]></Implementation>
+</Method>
+
+<Method name="getUnzip">
+<Description>
+Get path to unzip</Description>
+<ClassMethod>1</ClassMethod>
+<Implementation><![CDATA[
+	if $$$isWINDOWS {
+		set path = "unzip"
+	} else {
+		set path = "unzip"
+	}
+	return path
+]]></Implementation>
+</Method>
 </Class>
 </Export>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Converter.Utils.XML">
+<Abstract>1</Abstract>
+<TimeCreated>64322,68371.184816</TimeCreated>
+
+<Method name="prepareTransform">
+<Description>
+Подготовка трансформации</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&stream:%Stream.Object="",*transformedStream:%XML.FileCharacterStream,&params,outputEncoding:%String]]></FormalSpec>
+<Private>1</Private>
+<Implementation><![CDATA[
+	set transformedStream = ##class(%XML.FileCharacterStream).%New()
+	set transformedStream.TranslateTable = outputEncoding
+	
+	#dim key As %String = $order(params(""))
+	while(key '= "") 
+	{
+		set params(key) = "'" _ $replace(params(key), "'", "`") _ "'" 	
+		set key = $order(params(key))
+	}
+	
+	if (stream = "") set stream = ..getDummyXml()
+]]></Implementation>
+</Method>
+
+<Method name="transform">
+<Description>
+XSL-трансформация</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[stream:%Stream.Object="",xslStream:%Stream.Object,*transformedStream:%XML.FileCharacterStream,&params,callbackHandler:%XML.XSLT.CallbackHandler=$$$NULLOREF,outputEncoding:%String="UTF8"]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	do ..prepareTransform(.stream, .transformedStream, .params, outputEncoding)
+	quit ##class(%XML.XSLT.Transformer).TransformStream(stream, xslStream, transformedStream,,.params, callbackHandler)
+]]></Implementation>
+</Method>
+
+<Method name="transformByXDataXsl">
+<Description>
+XSL шаблон берется из XData</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[stream:%Stream.Object="",classNameOrObject,xdataName,*transformedStream:%XML.FileCharacterStream,&params,callbackHandler:%XML.XSLT.CallbackHandler=$$$NULLOREF,outputEncoding:%String="UTF8"]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim className As %String
+	
+	if $isObject(classNameOrObject)
+	{
+		set className = classNameOrObject.%ClassName(1)
+	}
+	else
+	{
+		set className = classNameOrObject
+	}
+	
+	#dim xslStream As %Stream.Object = ..getClassXData(className, xdataName)
+	
+	quit ..transform(stream, xslStream, .transformedStream, .params, callbackHandler, outputEncoding)
+]]></Implementation>
+</Method>
+
+<Method name="getClassXData">
+<Description>
+Возвращает содержимое блока XData с именем xdataName из указанного класса</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>className,xdataName</FormalSpec>
+<ReturnType>%Stream.Object</ReturnType>
+<Implementation><![CDATA[	quit ##class(%Dictionary.CompiledXData).%OpenId(className _ "||" _ xdataName).Data
+]]></Implementation>
+</Method>
+
+<Method name="getDummyXml">
+<Description>
+Получение минимального XML документа</Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Stream.Object</ReturnType>
+<Implementation><![CDATA[	quit ..getClassXData(..%ClassName(1), "dummyXml")
+]]></Implementation>
+</Method>
+
+<XData name="dummyXml">
+<Description>
+XML документ - заглушка</Description>
+<Data><![CDATA[<xml/>
+]]></Data>
+</XData>
+</Class>
+</Export>

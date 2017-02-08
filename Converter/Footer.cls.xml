@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+<Class name="Converter.Footer">
+<IncludeCode>%occIO</IncludeCode>
+<Super>Converter.Common</Super>
+<TimeCreated>64322,67407.603093</TimeCreated>
+
+<Parameter name="UNZIP">
+<Description>
+Use %3 (unzip) to unzip %1 file into %2 dir</Description>
+<Default>%3 %1 -d %2</Default>
+</Parameter>
+
+<Parameter name="ZIP">
+<Description>
+Use zip (%1) to archive dir %3 into file %2. 
+Tried with: 7z "%1 a -tzip %2 %3*" - does not work correctly on linux</Description>
+<Default><![CDATA[cd %3 && %1 -r %2 ./]]></Default>
+</Parameter>
+
+<Parameter name="FOOTERMASK">
+<Default>footer*.xml</Default>
+</Parameter>
+
+<Method name="modifyFooter">
+<Description>
+Добавить text в нижний колонтитул docx source файла. Результат в target
+w $System.Status.GetErrorText(##class(Converter.Footer).modifyFooter("C:\Temp\docx\2.docx", "C:\Temp\docx\21.docx", "TESTEST"))</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>source:%String,target:%String=source,text:%String</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	// Basic checks - Основные проверки
+	return:'##class(%File).Exists(source) $$$ERROR($$$FileDoesNotExist, source)
+	set target = ##class(%File).NormalizeFilenameWithSpaces(target)
+	return:##class(%File).Exists(target) $$$ERROR($$$GeneralError, "Target file already exists")
+	
+	// Temp dir to store target file - временная директория для хранения target файла
+	set tempDir = ..tempDir()
+	set success = ##class(%File).CreateDirectory(tempDir, .out)
+	return:'success $$$ERROR($$$GeneralError, "Unable to create directory " _ tempDir _ ", code: " _ out)
+	
+	// Распаковываем архив в папку
+	set sc = ..executeUnzip(source, tempDir)
+	quit:$$$ISERR(sc) sc
+
+	// Добавляем футер в каждую секцию документа, где его нет
+	set sc = ..addFooterToSections(tempDir)
+	quit:$$$ISERR(sc) sc
+	
+	// Создаём пустой (НЕ стандартный) футер и регистрируем его
+	set sc = ..addDefaultFooter(tempDir)
+	quit:$$$ISERR(sc) sc	
+	
+	// ищем все footer*.xml файлы и меняем на наш стандартный футер
+	set sc = ..modifyFooterFiles(tempDir, text)
+	quit:$$$ISERR(sc) sc
+	
+	// Запаковываем папку в архив 
+	set sc = ..executeZip(tempDir, target)
+	quit:$$$ISERR(sc) sc
+	quit sc
+]]></Implementation>
+</Method>
+
+<Method name="executeUnzip">
+<Description>
+Unpack source file into targetDir</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>source,targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set timeout = 100
+	set cmd = $$$FormatText(..#UNZIP, source, targetDir, ..getUnzip())
+	return ..execute(cmd, timeout)
+]]></Implementation>
+</Method>
+
+<Method name="modifyFooterFiles">
+<Description>
+Метод модификации футеров</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir,text</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim sc As %Status = $$$OK
+	
+	set footerName = ##class(%File).TempFilename("xml")
+	set sc = ..generateNewFooter(footerName, text)
+	quit:$$$ISERR(sc) sc
+	
+	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
+	#dim rs As %SQL.ClassQueryResultSet = ##class(%File).FileSetFunc(targetDir, ..#FOOTERMASK)
+	while rs.%Next() {
+		set result = ##class(%File).CopyFile(footerName, rs.Name, $$$YES, .code)
+		if result=0 {
+			set sc = $$$ERROR($$$GeneralError, "Error replacing '" _ rs.Name _ '" with '" _ newFooter _ "'. Code: " _ code)
+		}
+		quit:$$$ISERR(sc)
+	}
+	return sc
+]]></Implementation>
+</Method>
+
+<Method name="generateNewFooter">
+<Description>
+Сгенерировать новый футер в файле fileName с текстом text</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>fileName,text</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim sc As %Status = $$$OK
+	set file = ##class(%Stream.FileCharacter).%New()
+	set sc = file.LinkToFile(fileName)
+	quit:$$$ISERR(sc)
+	
+	#dim stream As %Stream.TmpCharacter  = ##class(%Stream.TmpCharacter).%New()
+	#dim transformedStream As %Stream.Object
+	
+	do stream.Write("<xml>" _ text _ "</xml>")
+	set sc = ##class(Converter.Utils.XML).transformByXDataXsl(stream, $classname(), "footerXSL", .transformedStream)
+	quit:$$$ISERR(sc)
+	
+	set sc = file.CopyFromAndSave(transformedStream)
+	kill file
+	quit sc
+]]></Implementation>
+</Method>
+
+<Method name="executeZip">
+<Description>
+Сгенерировать docx файл (архивирует подготовленую папку dir) в zip архив
+do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.docx")</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir,docx</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set timeout = 100
+	set cmd = $$$FormatText(..#ZIP, ..getZip(), docx, targetDir)
+	return ..execute(cmd, timeout)
+]]></Implementation>
+</Method>
+
+<Method name="addDefaultFooter">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set sc = ..addDefaultFooterType(targetDir)
+	quit:$$$ISERR(sc) sc
+	
+	set sc = ..addDefaultFooterFile(targetDir)
+	quit:$$$ISERR(sc) sc
+
+	set sc = ..addDefaultFooterRelationship(targetDir)
+	quit sc
+]]></Implementation>
+</Method>
+
+<Method name="addDefaultFooterType">
+<Description>
+добавляет override</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set filename = targetDir _ "[Content_Types].xml"
+
+	set file = ##class(%Stream.FileCharacter).%New()
+	set sc = file.LinkToFile(filename)
+	quit:$$$ISERR(sc) sc
+	
+	set stream = ##class(%Stream.TmpCharacter).%New()
+	do stream.Write($ZCVT(file.Read($$$MaxLocalLength),"O","UTF8"))
+	
+	set sc = ##class(Converter.Utils.XML).transformByXDataXsl(stream, $classname(), $$$CurrentMethod, .transformedStream)
+	quit:$$$ISERR(sc) sc
+	
+	set sc = file.CopyFromAndSave(transformedStream)
+	quit sc
+]]></Implementation>
+</Method>
+
+<Method name="addDefaultFooterFile">
+<Description>
+Создаёт пустой футер</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
+	set footerFile = ##class(%Stream.FileCharacter).%New()
+	do footerFile.LinkToFile(targetDir _ "footer0.xml")
+	do footerFile.Write($$$OK)
+	set sc = footerFile.%Save()
+	quit sc
+]]></Implementation>
+</Method>
+
+<Method name="addDefaultFooterRelationship">
+<Description>
+Добавляет отношение rId0</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
+	set relsDir = ##class(%File).SubDirectoryName(targetDir, "_rels", $$$YES)
+	
+	set filename = relsDir _ "document.xml.rels"
+
+	set file = ##class(%Stream.FileCharacter).%New()
+	set sc = file.LinkToFile(filename)
+	quit:$$$ISERR(sc) sc
+	
+	set stream = ##class(%Stream.TmpCharacter).%New()
+	do stream.Write($ZCVT(file.Read($$$MaxLocalLength),"O","UTF8"))
+	
+	set sc = ##class(Converter.Utils.XML).transformByXDataXsl(stream, $classname(), $$$CurrentMethod, .transformedStream)
+	quit:$$$ISERR(sc) sc
+	
+	set sc = file.CopyFromAndSave(transformedStream)
+	quit:$$$ISERR(sc) sc
+	
+	
+	set footerFile = ##class(%Stream.FileCharacter).%New()
+	do footerFile.LinkToFile(targetDir _ "footer0.xml")
+	set sc = footerFile.Write($$$OK)
+	quit:$$$ISERR(sc) sc
+	set sc = footerFile.%Save()
+		
+	quit sc
+]]></Implementation>
+</Method>
+
+<XData name="addDefaultFooterType">
+<Data><![CDATA[
+<xsl:stylesheet  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"  xmlns="http://schemas.openxmlformats.org/package/2006/content-types"  version="1.0">
+<xsl:output method="xml" omit-xml-declaration="yes" indent="no"  />
+<xsl:param name="new">
+<Override PartName="/word/footer0.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>
+</xsl:param>
+
+<xsl:template match="/*">
+<xsl:copy>
+<xsl:copy-of select="@* | node()"/> 
+<xsl:copy-of select="$new"/>
+</xsl:copy>
+</xsl:template>
+</xsl:stylesheet>
+]]></Data>
+</XData>
+
+<XData name="addDefaultFooterRelationship">
+<Data><![CDATA[
+<xsl:stylesheet  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"  xmlns="http://schemas.openxmlformats.org/package/2006/relationships"  version="1.0">
+<xsl:output method="xml" omit-xml-declaration="yes" indent="no"  />
+<xsl:param name="new">
+<Relationship Id="rId0" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer0.xml"/>
+</xsl:param>
+
+<xsl:template match="/*">
+<xsl:copy>
+<xsl:copy-of select="$new"/>
+<xsl:copy-of select="@* | node()"/>
+
+</xsl:copy>
+</xsl:template>
+</xsl:stylesheet>
+]]></Data>
+</XData>
+
+<Method name="addFooterToSections">
+<Description>
+Add footer to each document section</Description>
+<ClassMethod>1</ClassMethod>
+<FormalSpec>targetDir</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	#dim sc As %Status = $$$OK
+	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
+	set filename = targetDir _ "document.xml"
+	
+	set file = ##class(%Stream.FileCharacter).%New()
+	//set file.TranslateTable = "UTF8"
+	set sc = file.LinkToFile(filename)
+	quit:$$$ISERR(sc) sc
+	
+	set stream = ##class(%Stream.TmpCharacter).%New()
+	do stream.Write($ZCVT(file.Read($$$MaxLocalLength),"O","UTF8"))
+	
+	set sc = ##class(Converter.Utils.XML).transformByXDataXsl(stream, $classname(), $$$CurrentMethod, .transformedStream)
+	quit:$$$ISERR(sc) sc
+	
+	set sc = file.CopyFromAndSave(transformedStream)
+	quit sc
+]]></Implementation>
+</Method>
+
+<XData name="addFooterToSections">
+<Data><![CDATA[
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+version="1.0">
+<xsl:output method="xml" omit-xml-declaration="yes" indent="yes" />
+<xsl:template match="//@* | //node()">
+<xsl:copy>
+<xsl:apply-templates select="@*"/>
+<xsl:apply-templates select="node()"/>
+</xsl:copy>
+</xsl:template>
+<xsl:template match="//w:sectPr">
+<xsl:element name="{name()}" namespace="{namespace-uri()}">
+<xsl:copy-of select="./namespace::*"/>
+<xsl:apply-templates select="@*"/>
+<xsl:copy-of select="./*[local-name() != 'footerReference']"/>
+<w:footerReference w:type="default" r:id="rId0"/>
+<w:footerReference w:type="first" r:id="rId0"/>
+<w:footerReference w:type="even" r:id="rId0"/>
+</xsl:element>
+</xsl:template>
+</xsl:stylesheet>
+]]></Data>
+</XData>
+
+<XData name="footerXSL">
+<Description>
+Нижний колонтитул</Description>
+<Data><![CDATA[
+<xsl:stylesheet 
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+  xmlns="http://schemas.openxmlformats.org/package/2006/relationships" version="1.0">
+<xsl:output method="xml" omit-xml-declaration="no" indent="yes" standalone="yes"/>
+<xsl:template match="/">
+
+<w:ftr xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 w15 wp14">
+<w:p>
+<w:r>
+<w:rPr>
+<w:lang w:val="en-US"/>
+</w:rPr>
+<w:t><xsl:value-of select="//xml/text()"/></w:t>
+</w:r>
+</w:p>
+</w:ftr>
+</xsl:template>
+</xsl:stylesheet>
+]]></Data>
+</XData>
+</Class>
+</Export>
