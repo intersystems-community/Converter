@@ -32,3 +32,27 @@ Where:
 1. Libreoffice errors
    - Instal latest stable Libreoffice (5.2.5 atm). Minimally supported version is 4.2
    - Don't run more than one process of LibreOffice
+
+# Footer
+Add footer to MS office documents from InterSystems Caché.
+
+# Install
+
+1. Download and import code
+2. In OS:
+   - Windows: [zip](http://gnuwin32.sourceforge.net/packages/zip.htm),  [unzip](http://gnuwin32.sourceforge.net/packages/unzip.htm), [libxml2](http://xmlsoft.org/downloads.html), [git](https://git-scm.com/download/win), [TortoiseGit](https://tortoisegit.org/download/)
+   - Linux: ```apt-get install zip unzip libxml2 libxml2-utils git```
+3. Add binaries to path
+
+# Use
+
+Call from the terminal: 
+
+```cos
+do ##class(Converter.Footer).modifyFooter(source, target, text)
+```
+
+Where:
+- source - file to convert
+- target - result file
+- text - text to add to footer
