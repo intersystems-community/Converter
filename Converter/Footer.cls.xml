@@ -24,41 +24,48 @@ Tried with: 7z "%1 a -tzip %2 %3*" - does not work correctly on linux</Descripti
 
 <Method name="modifyFooter">
 <Description>
-Добавить text в нижний колонтитул docx source файла. Результат в target
+Add text to docx source footer. Output result into target
 w $System.Status.GetErrorText(##class(Converter.Footer).modifyFooter("C:\Temp\docx\2.docx", "C:\Temp\docx\21.docx", "TESTEST"))</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>source:%String,target:%String=source,text:%String</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-	// Basic checks - Основные проверки
+	// Basic checks
 	return:'##class(%File).Exists(source) $$$ERROR($$$FileDoesNotExist, source)
 	set target = ##class(%File).NormalizeFilenameWithSpaces(target)
 	return:##class(%File).Exists(target) $$$ERROR($$$GeneralError, "Target file already exists")
 	
-	// Temp dir to store target file - временная директория для хранения target файла
+	// Temp dir to store target file
 	set tempDir = ..tempDir()
 	set success = ##class(%File).CreateDirectory(tempDir, .out)
 	return:'success $$$ERROR($$$GeneralError, "Unable to create directory " _ tempDir _ ", code: " _ out)
 	
-	// Распаковываем архив в папку
+	// Unpack document into a folder
 	set sc = ..executeUnzip(source, tempDir)
 	quit:$$$ISERR(sc) sc
 
-	// Добавляем футер в каждую секцию документа, где его нет
+	// Add footer into each doc section
 	set sc = ..addFooterToSections(tempDir)
 	quit:$$$ISERR(sc) sc
 	
-	// Создаём пустой (НЕ стандартный) футер и регистрируем его
+	// Add empty (invalid)footer and register it
 	set sc = ..addDefaultFooter(tempDir)
 	quit:$$$ISERR(sc) sc	
 	
-	// ищем все footer*.xml файлы и меняем на наш стандартный футер
+	// Replace all footer*.xml files with ours
 	set sc = ..modifyFooterFiles(tempDir, text)
 	quit:$$$ISERR(sc) sc
 	
-	// Запаковываем папку в архив 
+	// Pack document
 	set sc = ..executeZip(tempDir, target)
 	quit:$$$ISERR(sc) sc
+
+	// Delete temp dir
+	set result = ##class(%File).RemoveDirectoryTree(tempDir)
+	if result=0 {
+		set sc = $$$ERROR($$$GeneralError, "Error removing: " _ tempDir)
+	}	
+
 	quit sc
 ]]></Implementation>
 </Method>
@@ -78,7 +85,7 @@ Unpack source file into targetDir</Description>
 
 <Method name="modifyFooterFiles">
 <Description>
-Метод модификации футеров</Description>
+Replace all footer*.xml files with ours</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir,text</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -104,7 +111,7 @@ Unpack source file into targetDir</Description>
 
 <Method name="generateNewFooter">
 <Description>
-Сгенерировать новый футер в файле fileName с текстом text</Description>
+Create new valid footer with tiext into fileName</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>fileName,text</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -129,7 +136,7 @@ Unpack source file into targetDir</Description>
 
 <Method name="executeZip">
 <Description>
-Сгенерировать docx файл (архивирует подготовленую папку dir) в zip архив
+Pack folder into a document
 do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.docx")</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir,docx</FormalSpec>
@@ -142,6 +149,8 @@ do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.d
 </Method>
 
 <Method name="addDefaultFooter">
+<Description>
+Add default footer to a document</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -159,7 +168,7 @@ do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.d
 
 <Method name="addDefaultFooterType">
 <Description>
-добавляет override</Description>
+Add overrride into [Content_Types].xml</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -183,7 +192,7 @@ do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.d
 
 <Method name="addDefaultFooterFile">
 <Description>
-Создаёт пустой футер</Description>
+Add empty invalid footer file</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -199,7 +208,7 @@ do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.d
 
 <Method name="addDefaultFooterRelationship">
 <Description>
-Добавляет отношение rId0</Description>
+Add rId0 relationship</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>targetDir</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -326,7 +335,7 @@ version="1.0">
 
 <XData name="footerXSL">
 <Description>
-Нижний колонтитул</Description>
+Footer</Description>
 <Data><![CDATA[
 <xsl:stylesheet 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 

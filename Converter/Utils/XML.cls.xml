@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
 <Class name="Converter.Utils.XML">
+<Description>
+Utilities for XSL transformation</Description>
 <Abstract>1</Abstract>
 <TimeCreated>64322,68371.184816</TimeCreated>
 
 <Method name="prepareTransform">
 <Description>
-Подготовка трансформации</Description>
+Prepare XSLT transformation</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec><![CDATA[&stream:%Stream.Object="",*transformedStream:%XML.FileCharacterStream,&params,outputEncoding:%String]]></FormalSpec>
 <Private>1</Private>
@@ -27,7 +29,7 @@
 
 <Method name="transform">
 <Description>
-XSL-трансформация</Description>
+XSL-transformation</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec><![CDATA[stream:%Stream.Object="",xslStream:%Stream.Object,*transformedStream:%XML.FileCharacterStream,&params,callbackHandler:%XML.XSLT.CallbackHandler=$$$NULLOREF,outputEncoding:%String="UTF8"]]></FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -39,7 +41,7 @@ XSL-трансформация</Description>
 
 <Method name="transformByXDataXsl">
 <Description>
-XSL шаблон берется из XData</Description>
+XSLT from XData block</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec><![CDATA[stream:%Stream.Object="",classNameOrObject,xdataName,*transformedStream:%XML.FileCharacterStream,&params,callbackHandler:%XML.XSLT.CallbackHandler=$$$NULLOREF,outputEncoding:%String="UTF8"]]></FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -63,7 +65,7 @@ XSL шаблон берется из XData</Description>
 
 <Method name="getClassXData">
 <Description>
-Возвращает содержимое блока XData с именем xdataName из указанного класса</Description>
+Get class XData as a stream</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>className,xdataName</FormalSpec>
 <ReturnType>%Stream.Object</ReturnType>
@@ -73,7 +75,7 @@ XSL шаблон берется из XData</Description>
 
 <Method name="getDummyXml">
 <Description>
-Получение минимального XML документа</Description>
+Get minimal xml</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Stream.Object</ReturnType>
 <Implementation><![CDATA[	quit ..getClassXData(..%ClassName(1), "dummyXml")
@@ -82,7 +84,7 @@ XSL шаблон берется из XData</Description>
 
 <XData name="dummyXml">
 <Description>
-XML документ - заглушка</Description>
+Minimal xml</Description>
 <Data><![CDATA[<xml/>
 ]]></Data>
 </XData>
