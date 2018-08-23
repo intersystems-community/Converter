@@ -1,35 +1,21 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="25">
-<Class name="Converter.Footer">
-<IncludeCode>%occIO</IncludeCode>
-<Super>Converter.Common</Super>
-<TimeCreated>64322,67407.603093</TimeCreated>
+Include %occIO
 
-<Parameter name="UNZIP">
-<Description>
-Use %3 (unzip) to unzip %1 file into %2 dir</Description>
-<Default>%3 %1 -d %2</Default>
-</Parameter>
+Class Converter.Footer Extends Converter.Common
+{
 
-<Parameter name="ZIP">
-<Description>
-Use zip (%1) to archive dir %3 into file %2. 
-Tried with: 7z "%1 a -tzip %2 %3*" - does not work correctly on linux</Description>
-<Default><![CDATA[cd %3 && %1 -r %2 ./]]></Default>
-</Parameter>
+/// Use %3 (unzip) to unzip %1 file into %2 dir
+Parameter UNZIP = "%3 %1 -d %2";
 
-<Parameter name="FOOTERMASK">
-<Default>footer*.xml</Default>
-</Parameter>
+/// Use zip (%1) to archive dir %3 into file %2. 
+/// Tried with: 7z "%1 a -tzip %2 %3*" - does not work correctly on linux
+Parameter ZIP = "cd %3 && %1 -r %2 ./";
 
-<Method name="modifyFooter">
-<Description>
-Add text to docx source footer. Output result into target
-w $System.Status.GetErrorText(##class(Converter.Footer).modifyFooter("C:\Temp\docx\2.docx", "C:\Temp\docx\21.docx", "TESTEST"))</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>source:%String,target:%String=source,text:%String</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+Parameter FOOTERMASK = "footer*.xml";
+
+/// Add text to docx source footer. Output result into target
+/// w $System.Status.GetErrorText(##class(Converter.Footer).modifyFooter("C:\Temp\docx\2.docx", "C:\Temp\docx\21.docx", "TESTEST"))
+ClassMethod modifyFooter(source As %String, target As %String = {source}, text As %String) As %Status
+{
 	// Basic checks
 	return:'##class(%File).Exists(source) $$$ERROR($$$FileDoesNotExist, source)
 	set target = ##class(%File).NormalizeFilenameWithSpaces(target)
@@ -67,29 +53,19 @@ w $System.Status.GetErrorText(##class(Converter.Footer).modifyFooter("C:\Temp\do
 	}	
 
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="executeUnzip">
-<Description>
-Unpack source file into targetDir</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>source,targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Unpack source file into targetDir
+ClassMethod executeUnzip(source, targetDir) As %Status
+{
 	set timeout = 100
 	set cmd = $$$FormatText(..#UNZIP, source, targetDir, ..getUnzip())
 	return ..execute(cmd, timeout)
-]]></Implementation>
-</Method>
+}
 
-<Method name="modifyFooterFiles">
-<Description>
-Replace all footer*.xml files with ours</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir,text</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Replace all footer*.xml files with ours
+ClassMethod modifyFooterFiles(targetDir, text) As %Status
+{
 	#dim sc As %Status = $$$OK
 	
 	set footerName = ##class(%File).TempFilename("xml")
@@ -106,16 +82,11 @@ Replace all footer*.xml files with ours</Description>
 		quit:$$$ISERR(sc)
 	}
 	return sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="generateNewFooter">
-<Description>
-Create new valid footer with tiext into fileName</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>fileName,text</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Create new valid footer with tiext into fileName
+ClassMethod generateNewFooter(fileName, text) As %Status
+{
 	#dim sc As %Status = $$$OK
 	set file = ##class(%Stream.FileCharacter).%New()
 	set sc = file.LinkToFile(fileName)
@@ -131,30 +102,20 @@ Create new valid footer with tiext into fileName</Description>
 	set sc = file.CopyFromAndSave(transformedStream)
 	kill file
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="executeZip">
-<Description>
-Pack folder into a document
-do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.docx")</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir,docx</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Pack folder into a document
+/// do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.docx")
+ClassMethod executeZip(targetDir, docx) As %Status
+{
 	set timeout = 100
 	set cmd = $$$FormatText(..#ZIP, ..getZip(), docx, targetDir)
 	return ..execute(cmd, timeout)
-]]></Implementation>
-</Method>
+}
 
-<Method name="addDefaultFooter">
-<Description>
-Add default footer to a document</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Add default footer to a document
+ClassMethod addDefaultFooter(targetDir) As %Status
+{
 	set sc = ..addDefaultFooterType(targetDir)
 	quit:$$$ISERR(sc) sc
 	
@@ -163,16 +124,11 @@ Add default footer to a document</Description>
 
 	set sc = ..addDefaultFooterRelationship(targetDir)
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="addDefaultFooterType">
-<Description>
-Add overrride into [Content_Types].xml</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Add overrride into [Content_Types].xml
+ClassMethod addDefaultFooterType(targetDir) As %Status
+{
 	set filename = targetDir _ "[Content_Types].xml"
 
 	set file = ##class(%Stream.FileCharacter).%New()
@@ -187,32 +143,22 @@ Add overrride into [Content_Types].xml</Description>
 	
 	set sc = file.CopyFromAndSave(transformedStream)
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="addDefaultFooterFile">
-<Description>
-Add empty invalid footer file</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Add empty invalid footer file
+ClassMethod addDefaultFooterFile(targetDir) As %Status
+{
 	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
 	set footerFile = ##class(%Stream.FileCharacter).%New()
 	do footerFile.LinkToFile(targetDir _ "footer0.xml")
 	do footerFile.Write($$$OK)
 	set sc = footerFile.%Save()
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="addDefaultFooterRelationship">
-<Description>
-Add rId0 relationship</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Add rId0 relationship
+ClassMethod addDefaultFooterRelationship(targetDir) As %Status
+{
 	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
 	set relsDir = ##class(%File).SubDirectoryName(targetDir, "_rels", $$$YES)
 	
@@ -239,11 +185,10 @@ Add rId0 relationship</Description>
 	set sc = footerFile.%Save()
 		
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<XData name="addDefaultFooterType">
-<Data><![CDATA[
+XData addDefaultFooterType
+{
 <xsl:stylesheet  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"  xmlns="http://schemas.openxmlformats.org/package/2006/content-types"  version="1.0">
 <xsl:output method="xml" omit-xml-declaration="yes" indent="no"  />
 <xsl:param name="new">
@@ -257,11 +202,10 @@ Add rId0 relationship</Description>
 </xsl:copy>
 </xsl:template>
 </xsl:stylesheet>
-]]></Data>
-</XData>
+}
 
-<XData name="addDefaultFooterRelationship">
-<Data><![CDATA[
+XData addDefaultFooterRelationship
+{
 <xsl:stylesheet  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"  xmlns="http://schemas.openxmlformats.org/package/2006/relationships"  version="1.0">
 <xsl:output method="xml" omit-xml-declaration="yes" indent="no"  />
 <xsl:param name="new">
@@ -276,16 +220,11 @@ Add rId0 relationship</Description>
 </xsl:copy>
 </xsl:template>
 </xsl:stylesheet>
-]]></Data>
-</XData>
+}
 
-<Method name="addFooterToSections">
-<Description>
-Add footer to each document section</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>targetDir</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Add footer to each document section
+ClassMethod addFooterToSections(targetDir) As %Status
+{
 	#dim sc As %Status = $$$OK
 	set targetDir = ##class(%File).SubDirectoryName(targetDir, "word", $$$YES)
 	set filename = targetDir _ "document.xml"
@@ -303,11 +242,10 @@ Add footer to each document section</Description>
 	
 	set sc = file.CopyFromAndSave(transformedStream)
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<XData name="addFooterToSections">
-<Data><![CDATA[
+XData addFooterToSections
+{
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -330,13 +268,11 @@ version="1.0">
 </xsl:element>
 </xsl:template>
 </xsl:stylesheet>
-]]></Data>
-</XData>
+}
 
-<XData name="footerXSL">
-<Description>
-Footer</Description>
-<Data><![CDATA[
+/// Footer
+XData footerXSL
+{
 <xsl:stylesheet 
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
   xmlns="http://schemas.openxmlformats.org/package/2006/relationships" version="1.0">
@@ -355,7 +291,7 @@ Footer</Description>
 </w:ftr>
 </xsl:template>
 </xsl:stylesheet>
-]]></Data>
-</XData>
-</Class>
-</Export>
+}
+
+}
+
