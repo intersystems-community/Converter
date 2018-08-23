@@ -1,24 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="25">
-<Class name="Converter.LibreOffice">
-<Abstract>1</Abstract>
-<Super>Common</Super>
-<TimeCreated>64316,72786.038168</TimeCreated>
+Class Converter.LibreOffice Extends Common [ Abstract ]
+{
 
-<Parameter name="COMMAND">
-<Description>
-Convert a file %1 into %2 format and place it into %3 directory (name equal to %1 name, extension = %2)</Description>
-<Default>%4 --headless --writer --convert-to %2 --outdir %3 %1</Default>
-</Parameter>
+/// Convert a file %1 into %2 format and place it into %3 directory (name equal to %1 name, extension = %2)
+Parameter COMMAND = "%4 --headless --writer --convert-to %2 --outdir %3 %1";
 
-<Method name="convert">
-<Description>
-Convert source file into target file. format - target format. Supported formats: https://wiki.openoffice.org/wiki/Framework/Article/Filter/FilterList_OOo_3_0
-w $System.Status.GetErrorText(##class(Converter.LibreOffice).convert("C:\temp\1.doc", "C:\temp\1.docx", "docx"))</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>source:%String,target:%String,format:%String(VALUELIST=",docx,html,mediawiki,csv,pptx,ppt,wmf,emf,svg,xlsx,xls")="docx"</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Convert source file into target file. format - target format. Supported formats: https://wiki.openoffice.org/wiki/Framework/Article/Filter/FilterList_OOo_3_0
+/// w $System.Status.GetErrorText(##class(Converter.LibreOffice).convert("C:\temp\1.doc", "C:\temp\1.docx", "docx"))
+ClassMethod convert(source As %String, target As %String, format As %String(VALUELIST=",docx,html,mediawiki,csv,pptx,ppt,wmf,emf,svg,xlsx,xls") = "docx") As %Status
+{
 	#dim sc As %Status = $$$OK
 	
 	// Basic checks
@@ -50,23 +39,18 @@ w $System.Status.GetErrorText(##class(Converter.LibreOffice).convert("C:\temp\1.
 		set sc = $$$ERROR($$$GeneralError, "Error removing: " _ tempDir)
 	}
 	quit sc
-]]></Implementation>
-</Method>
+}
 
-<Method name="executeConvert">
-<Description>
-Convert source into format and place it into targetDir</Description>
-<ClassMethod>1</ClassMethod>
-<FormalSpec>source,targetDir,format</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
+/// Convert source into format and place it into targetDir
+ClassMethod executeConvert(source, targetDir, format) As %Status
+{
 	// Libreoffice needs targetDir without last slash
 	set:$e(targetDir,*)=..#SLASH targetDir = $e(targetDir, 1, *-1)
 	
 	set timeout = 100
 	set cmd = $$$FormatText(..#COMMAND, source, format, targetDir, ..getSO())
 	return ..execute(cmd, timeout)
-]]></Implementation>
-</Method>
-</Class>
-</Export>
+}
+
+}
+
