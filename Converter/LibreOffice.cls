@@ -1,9 +1,6 @@
 Class Converter.LibreOffice Extends Common [ Abstract ]
 {
 
-/// Convert a file %1 into %2 format and place it into %3 directory (name equal to %1 name, extension = %2)
-Parameter COMMAND = "%4 --headless --writer --convert-to %2 --outdir %3 %1";
-
 /// Convert source file into target file. format - target format. Supported formats: https://wiki.openoffice.org/wiki/Framework/Article/Filter/FilterList_OOo_3_0
 /// w $System.Status.GetErrorText(##class(Converter.LibreOffice).convert("C:\temp\1.doc", "C:\temp\1.docx", "docx"))
 ClassMethod convert(source As %String, target As %String, format As %String(VALUELIST=",docx,html,mediawiki,csv,pptx,ppt,wmf,emf,svg,xlsx,xls") = "docx") As %Status
@@ -48,8 +45,15 @@ ClassMethod executeConvert(source, targetDir, format) As %Status
 	set:$e(targetDir,*)=..#SLASH targetDir = $e(targetDir, 1, *-1)
 	
 	set timeout = 100
-	set cmd = $$$FormatText(..#COMMAND, source, format, targetDir, ..getSO())
-	return ..execute(cmd, timeout)
+	set cmd = ..getSO()				// Get executable
+	set args(1) = "--headless"		// Do not run GUI
+	set args(2) = "--writer"		// Use writer converter
+	set args(3) = "--convert-to"	// Target format
+	set args(4) = format
+	set args(5) = "--outdir"		// Directory to output converted files to
+	set args(6) = targetDir
+	set args(7) = source
+	return ..execute(cmd, .args, timeout)
 }
 
 }

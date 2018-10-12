@@ -6,13 +6,13 @@ Parameter SLASH = {$case($system.Version.GetOS(),"Windows":"\",:"/")};
 /// Execute OS command cmd. 
 /// timeout - how long to wait for command completion. 
 /// If debug is true then output debug information.
-ClassMethod execute(cmd, timeout As %Integer = 60, debug As %Boolean = {$$$NO}) As %Status
+ClassMethod execute(cmd As %String, ByRef args As %String, timeout As %Integer = 60, debug As %Boolean = {$$$NO}) As %Status
 {
 	#dim sc As %Status = $$$OK
 	set code = ""
 	set out = ""
-	write:debug !, "cmd: ", cmd, !
-	set sc = ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code)
+	write:debug !, "cmd: ", ..buildFullCommand(cmd, .args), !
+	set sc = ..runCommandViaZF(cmd, .args , .out, timeout, $$$YES, .code)
 	if debug {
 		write "status: "
 		if $$$ISERR(sc) {
@@ -24,10 +24,37 @@ ClassMethod execute(cmd, timeout As %Integer = 60, debug As %Boolean = {$$$NO}) 
 	}
 	
 	if code'=0 {
-		set sc1 = $$$ERROR($$$GeneralError, "Command: " _ cmd _ $$$NL _ " Error code: " _ code _ $$$NL _ "Output: " _ out)
+		set sc1 = $$$ERROR($$$GeneralError, "Command: " _ ..buildFullCommand(cmd, .args) _ $$$NL _ " Error code: " _ code _ $$$NL _ "Output: " _ out)
 		set sc = $$$ADDSC(sc, sc1)	
 	}
 	return sc
+}
+
+/// do ##class(Converter.Common).runCommandViaZF()
+ClassMethod runCommandViaZF(cmd As %String, ByRef args As %String, Output out As %String, timeout As %Integer = 60, deleteTempFile As %Boolean = 1, Output code As %String) As %Status [ CodeMode = objectgenerator ]
+{
+	set argsCount = $l($$$defMemberKeyGet("%Net.Remote.Utility",$$$cCLASSmethod,"RunCommandViaZF",$$$cMETHformalspec),",")
+	if argsCount = 6 {
+		do %code.WriteLine($$$TAB _ "set cmd = ..buildFullCommand(cmd, .args)")
+		do %code.WriteLine($$$TAB _ "quit ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code)")
+	} else {
+		do %code.WriteLine($$$TAB _ "quit ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code,  .args, $$$NO)")
+	}
+	quit $$$OK
+}
+
+/// w ##class(Converter.Common).buildFullCommand()
+ClassMethod buildFullCommand(cmd As %String, ByRef args As %String) As %String
+{
+	quit:$d(args)<10 cmd
+	set result = $lb(cmd)	
+	set key = ""
+	for {
+		set key=$order(args(key),1,arg) 
+		quit:key=""
+		set result = result _ $lb(arg)
+	}
+	quit $lts(result, " ")
 }
 
 /// Get name of temporary not-existstig sub-directory inside dir
