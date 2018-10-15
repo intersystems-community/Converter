@@ -45,14 +45,25 @@ ClassMethod executeConvert(source, targetDir, format) As %Status
 	set:$e(targetDir,*)=..#SLASH targetDir = $e(targetDir, 1, *-1)
 	
 	set timeout = 100
-	set cmd = ..getSO()				// Get executable
-	set args(1) = "--headless"		// Do not run GUI
-	set args(2) = "--writer"		// Use writer converter
-	set args(3) = "--convert-to"	// Target format
-	set args(4) = format
-	set args(5) = "--outdir"		// Directory to output converted files to
-	set args(6) = targetDir
-	set args(7) = source
+	set cmd = ..getSO()					// Get executable
+	if '$$$isWINDOWS {
+		// export HOME=/tmp && unset LD_LIBRARY_PATH && soffice
+		set args($i(args)) = "HOME=/tmp"
+		set args($i(args)) = "&&"
+		set args($i(args)) = "unset"
+		set args($i(args)) = "LD_LIBRARY_PATH"
+		set args($i(args)) = "&&"
+		set args($i(args)) = "soffice"
+	}
+	
+	set args($i(args)) = "--headless"	// Do not run GUI
+	set args($i(args)) = "--writer"		// Use writer converter
+	set args($i(args)) = "--convert-to"	// Target format
+	set args($i(args)) = format
+	set args($i(args)) = "--outdir"		// Directory to output converted files to
+	set args($i(args)) = targetDir
+	set args($i(args)) = source
+
 	return ..execute(cmd, .args, timeout)
 }
 

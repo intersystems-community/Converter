@@ -38,9 +38,71 @@ ClassMethod runCommandViaZF(cmd As %String, ByRef args As %String, Output out As
 		do %code.WriteLine($$$TAB _ "set cmd = ..buildFullCommand(cmd, .args)")
 		do %code.WriteLine($$$TAB _ "quit ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code)")
 	} else {
-		do %code.WriteLine($$$TAB _ "quit ##class(%Net.Remote.Utility).RunCommandViaZF(cmd, , .out, timeout, $$$YES, .code,  .args, $$$NO)")
+		do %code.WriteLine($$$TAB _ "quit ..runCommandViaZFInternal(cmd, , .out, timeout, $$$YES, .code,  .args, $$$NO, 1)")
 	}
 	quit $$$OK
+}
+
+/// Run a command using $ZF(-100) and an external temporary file to store the command output. <br>
+/// If <var>pDeleteTempFile</var> is 0 (false), the temporary file is not deleted; in this case, it is up to the caller to delete it when done with it.
+ClassMethod runCommandViaZFInternal(pCmd As %String, Output pTempFileName As %String, Output pOutput As %String, pOpenTimeout As %Integer = 5, pDeleteTempFile As %Boolean = 1, Output pRetCode As %String, ByRef pCmdArgs, pAsynchronous As %Boolean = 0, pUseShell As %Boolean = 0) As %Status
+{
+	Set tSC = $$$OK
+	Set pOutput = ""
+	Set pRetCode = ""
+	Set IO = $IO
+	Set ZEOFMode = $ZU(68,40,1)
+	Set pTempFileName = ""
+
+	Try {
+		Set (tFile,pTempFileName) = ##class(%File).TempFilename("txt")
+		If tFile="" Set tSC = $$$ERROR($$$CacheError, "Failed to obtain a temporary file name") Quit
+		Set cmdFlags = $Select(pUseShell:"/SHELL",1:"") _ $Select(pAsynchronous:"/ASYNC",1:"") _"/STDOUT="""_tFile_"""/STDERR="""_tFile_""""
+		#if $l($$$defMemberKeyGet("%Net.Remote.Utility",$$$cCLASSmethod,"RunCommandViaZF",$$$cMETHformalspec),",")>6 
+		Set pRetCode = $ZF(-100,cmdFlags,pCmd,.pCmdArgs)
+		#endif
+		
+		Close tFile Open tFile:("RS"):pOpenTimeout
+		If '$T Set tSC = $$$ERROR($$$CacheError, "Failed to open temporary file '"_tFile_"'") Quit
+		Set TooMuch = 0
+		Use tFile
+		For {
+			// Keep reading through end of file; save only first 32,000 characters
+			Set tLine = "" Read tLine:1
+			If '$T && (tLine=$C(-1)) Quit  // Exit by timeout
+			If 'TooMuch {
+				Set:pOutput'="" pOutput = pOutput_$C(13,10)
+				If $L(pOutput)+$l(tLine)<32000 {
+					Set pOutput = pOutput_tLine
+				}
+				Else {
+					Set pOutput = pOutput_$E(tLine,1,32000-$L(pOutput))_" (more...)"
+					Set TooMuch = 1
+				}
+			}
+			If ($ZEOF=-1) Quit  // Exit by EOF
+		}
+	}
+	Catch (ex) {
+		Set tSC = ex.AsStatus()
+	}
+
+	Try {
+		If pDeleteTempFile {
+			Close tFile:"D"
+		}
+		Else {
+			Close tFile
+		}
+	} Catch (ex) {
+		// don't overwrite the error status if it's already populated
+		Set:$$$ISOK(tSC) tSC = ex.AsStatus()
+	}
+
+	If 'ZEOFMode Do $ZU(68,40,0) // Restore ZEOF mode
+	Use IO
+	
+	Quit tSC
 }
 
 /// w ##class(Converter.Common).buildFullCommand()
@@ -78,7 +140,7 @@ ClassMethod getSO()
 	if $$$isWINDOWS {
 		set path = "soffice"
 	} else {
-		set path = "export HOME=/tmp && unset LD_LIBRARY_PATH && soffice"
+		set path = "export" // "export HOME=/tmp && unset LD_LIBRARY_PATH && soffice"
 	}
 	return path
 }
