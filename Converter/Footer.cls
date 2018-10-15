@@ -3,13 +3,6 @@ Include %occIO
 Class Converter.Footer Extends Converter.Common
 {
 
-/// Use %3 (unzip) to unzip %1 file into %2 dir
-Parameter UNZIP = "%3 %1 -d %2";
-
-/// Use zip (%1) to archive dir %3 into file %2. 
-/// Tried with: 7z "%1 a -tzip %2 %3*" - does not work correctly on linux
-Parameter ZIP = "cd %3 && %1 -r %2 ./";
-
 Parameter FOOTERMASK = "footer*.xml";
 
 /// Add text to docx source footer. Output result into target
@@ -59,8 +52,13 @@ ClassMethod modifyFooter(source As %String, target As %String = {source}, text A
 ClassMethod executeUnzip(source, targetDir) As %Status
 {
 	set timeout = 100
-	set cmd = $$$FormatText(..#UNZIP, source, targetDir, ..getUnzip())
-	return ..execute(cmd, timeout)
+	
+	set cmd = ..getUnzip()
+	set arg(1) = source
+	set arg(2) = targetDir
+
+	
+	return ..execute(cmd, .args, timeout)
 }
 
 /// Replace all footer*.xml files with ours
@@ -108,9 +106,18 @@ ClassMethod generateNewFooter(fileName, text) As %Status
 /// do ##class(Converter.Footer).generateDocx("C:\Temp\docx\out", "C:\Temp\docx\21.docx")
 ClassMethod executeZip(targetDir, docx) As %Status
 {
+	set oldDir = $system.Process.CurrentDirectory(targetDir)
+	
 	set timeout = 100
-	set cmd = $$$FormatText(..#ZIP, ..getZip(), docx, targetDir)
-	return ..execute(cmd, timeout)
+	
+	set cmd = ..getZip()
+	set args(1) = "-r"
+	set args(2) = docx
+	set args(3) = "./"
+	
+	set sc = ..execute(cmd, timeout)
+	do $system.Process.CurrentDirectory(oldDir)
+	quit sc
 }
 
 /// Add default footer to a document
