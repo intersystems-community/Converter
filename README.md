@@ -55,4 +55,29 @@ do ##class(Converter.Footer).modifyFooter(source, target, text)
 Where:
 - source - file to convert
 - target - result file
-- text - text to add to footer
+- text - text to add to footer    
+## Docker
+### Prerequisites
+Make sure you have [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) and [Docker desktop](https://www.docker.com/products/docker-desktop) installed.
+### Installation
+Clone/git pull the repo into any local directory
+```
+$ git clone https://github.com/rcemper/PR_Converter.git
+```
+```
+$ docker compose up -d && docker compose logs -f
+```
+Container start  
+creates appropriate directory "/home/irisowner/dev/Unit Tests"   
+sets ^UnitTestRoot = "/home/irisowner/dev/"    
+
+To open IRIS Terminal do:
+```
+$ docker-compose exec iris iris session iris
+USER>
+```
+or using **WebTerminal**     
+http://localhost:42773/terminal/      
+
+To access IRIS System Management Portal   
+http://localhost:42773/csp/sys/UtilHome.csp    

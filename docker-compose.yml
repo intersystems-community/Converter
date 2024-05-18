@@ -1,0 +1,13 @@
+version: '3.6'
+services:
+  iris:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+  
+    ports: 
+      - 41773:1972
+      - 42773:52773
+    volumes:
+      - ./:/home/irisowner/dev
